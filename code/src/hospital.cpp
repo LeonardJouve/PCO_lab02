@@ -19,8 +19,14 @@ Hospital::Hospital(int uniqueId, int fund, int maxBeds)
 }
 
 int Hospital::request(ItemType what, int qty){
-    // TODO 
-    return 0;
+    if (what != ItemType::PatientSick || qty <= 0) return 0;
+
+    int amount = std::min(stocks[ItemType::PatientSick], qty);
+    money += getCostPerUnit(ItemType::PatientSick) * amount;
+    currentBeds -= amount;
+    stocks[ItemType::PatientSick] -= amount;
+
+    return amount;
 }
 
 void Hospital::freeHealedPatient() {
@@ -33,7 +39,14 @@ void Hospital::transferPatientsFromClinic() {
 
 int Hospital::send(ItemType it, int qty, int bill) {
     // TODO
-    return 0;
+    if (it != ItemType::PatientSick || qty <= 0) return 0;
+
+    int amount = std::min(std::max(maxBeds - currentBeds, qty), money / bill);
+    money -= bill * amount;
+    currentBeds += amount;
+    stocks[ItemType::PatientSick] += amount;
+
+    return amount;
 }
 
 void Hospital::run()
@@ -45,7 +58,7 @@ void Hospital::run()
 
     interface->consoleAppendText(uniqueId, "[START] Hospital routine");
 
-    while (true /*TODO*/) {
+    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
         transferPatientsFromClinic();
 
         freeHealedPatient();

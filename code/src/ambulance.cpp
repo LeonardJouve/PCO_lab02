@@ -22,12 +22,21 @@ Ambulance::Ambulance(int uniqueId, int fund, std::vector<ItemType> resourcesSupp
 
 void Ambulance::sendPatient(){
     // TODO
+    for (auto& hospital : hospitals) {
+        int amount = hospital->send(ItemType::PatientSick, getNumberPatients(), getCostPerUnit(ItemType::PatientSick));
+        if (amount > 0) {
+            nbTransfer += amount;
+            stocks[ItemType::PatientSick] -= amount;
+            money += getCostPerUnit(ItemType::PatientSick) * amount;
+            break;
+        }
+    }
 }
 
 void Ambulance::run() {
     interface->consoleAppendText(uniqueId, "[START] Ambulance routine");
 
-    while (true /*TODO*/) {
+    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
     
         sendPatient();
         

@@ -1,6 +1,7 @@
 #include "supplier.h"
 #include "costs.h"
 #include <pcosynchro/pcothread.h>
+#include <algorithm>
 
 IWindowInterface* Supplier::interface = nullptr;
 
@@ -18,21 +19,34 @@ Supplier::Supplier(int uniqueId, int fund, std::vector<ItemType> resourcesSuppli
 
 int Supplier::request(ItemType it, int qty) {
     // TODO
-    return 0;
+    if (find(resourcesSupplied.begin(), resourcesSupplied.end(), it) == resourcesSupplied.end() || qty <= 0) {
+        return 0;
+    }
+
+    int amount = std::min(stocks[it], qty);
+    money += amount * getCostPerUnit(it);
+    stocks[it] -= amount;
+
+    return amount;
 }
 
 void Supplier::run() {
     interface->consoleAppendText(uniqueId, "[START] Supplier routine");
-    while (true /*TODO*/) {
+    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
         ItemType resourceSupplied = getRandomItemFromStock();
         int supplierCost = getEmployeeSalary(getEmployeeThatProduces(resourceSupplied));
         // TODO 
+        if (money < supplierCost) continue;
+
+        // TODO decrement funds
+        money -= supplierCost;
+        ++stocks[resourceSupplied];
 
         /* Temps aléatoire borné qui simule l'attente du travail fini*/
         interface->simulateWork();
         //TODO
 
-        nbSupplied++;
+        ++nbSupplied;
 
         interface->updateFund(uniqueId, money);
         interface->updateStock(uniqueId, &stocks);
