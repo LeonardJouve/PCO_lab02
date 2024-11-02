@@ -27,23 +27,54 @@ bool Clinic::verifyResources() {
 
 int Clinic::request(ItemType what, int qty){
     // TODO 
+    if(what != ItemType::PatientHealed) return 0;
 
-    return 0;
+    int patients = std::max(qty, stocks[ItemType::PatientHealed]);
+
+    stocks[ItemType::PatientHealed] -= patients;
+
+    return patients;
 }
 
 void Clinic::treatPatient() {
     // TODO 
+    if(stocks[ItemType::PatientSick] <= 0) return;
 
     //Temps simulant un traitement 
     interface->simulateWork();
 
-    // TODO 
+    // TODO
+    for(const auto& item : resourcesNeeded){
+        if(stocks[item] <= 0){
+            std::cout << "Error " << stocks[item] << std::endl;
+        }
+        --stocks[item];
+    }
+
+    ++nbTreated;
+    --stocks[ItemType::PatientSick];
+
+    money -= getEmployeeSalary(EmployeeType::Doctor);
     
     interface->consoleAppendText(uniqueId, "Clinic have healed a new patient");
 }
 
 void Clinic::orderResources() {
     // TODO 
+    for(const auto& item : resourcesNeeded){
+        if(stocks[item] == 0){
+            for(const auto sup : suppliers){
+                int amount = sup->request(item, 1);
+                if (amount != 1){
+                    continue;
+                }
+                ++stocks[item];
+                money -= getCostPerUnit(item);
+                break;
+
+            }
+        }
+    }
 }
 
 void Clinic::run() {
@@ -51,7 +82,7 @@ void Clinic::run() {
         std::cerr << "You have to give to hospitals and suppliers to run a clinic" << std::endl;
         return;
     }
-    interface->consoleAppendText(uniqueId, "[START] Factory routine");
+    interface->consoleAppendText(uniqueId, "[START] Clinic routine");
 
     while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
         

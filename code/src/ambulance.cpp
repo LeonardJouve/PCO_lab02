@@ -24,12 +24,14 @@ void Ambulance::sendPatient(){
     // TODO
     for (auto& hospital : hospitals) {
         int amount = hospital->send(ItemType::PatientSick, getNumberPatients(), getCostPerUnit(ItemType::PatientSick));
+
         if (amount > 0) {
             nbTransfer += amount;
             stocks[ItemType::PatientSick] -= amount;
             money += getCostPerUnit(ItemType::PatientSick) * amount;
             break;
         }
+
     }
 }
 

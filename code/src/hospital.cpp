@@ -16,6 +16,10 @@ Hospital::Hospital(int uniqueId, int fund, int maxBeds)
     for(const auto& item : initialStocks) {
         stocks[item] = 0;
     }
+
+    for(int i = 0; i < 5; ++i) {
+        patientsRecovering.emplace(i, 0);
+    }
 }
 
 int Hospital::request(ItemType what, int qty){
@@ -30,11 +34,25 @@ int Hospital::request(ItemType what, int qty){
 }
 
 void Hospital::freeHealedPatient() {
-    // TODO 
+    int patientsToFree = patientsRecovering[0];//these patients did their 5 days of resting
+    //each patient need to stay one less day
+    for(int i = 0; i < 4; ++i){
+        patientsRecovering[i] = patientsRecovering[i + 1];
+    }
+    patientsRecovering[4] = 0;
+    stocks[ItemType::PatientHealed] -= patientsToFree;
+    nbFree += patientsToFree;
 }
 
 void Hospital::transferPatientsFromClinic() {
-    // TODO
+    for(Seller *c : this->clinics){
+        int healedPatients = c->request(ItemType::PatientHealed, maxBeds - currentBeds);
+        currentBeds += healedPatients;
+        patientsRecovering[4] += healedPatients;//newly healed patients who need to stay 5 days
+        stocks[ItemType::PatientHealed] += healedPatients;
+        money -= getEmployeeSalary(EmployeeType::Nurse) * healedPatients;
+        nbHospitalised += healedPatients;
+    }
 }
 
 int Hospital::send(ItemType it, int qty, int bill) {
@@ -45,7 +63,6 @@ int Hospital::send(ItemType it, int qty, int bill) {
     money -= bill * amount;
     currentBeds += amount;
     stocks[ItemType::PatientSick] += amount;
-
     return amount;
 }
 

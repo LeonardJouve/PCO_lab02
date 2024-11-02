@@ -19,7 +19,7 @@ Supplier::Supplier(int uniqueId, int fund, std::vector<ItemType> resourcesSuppli
 
 int Supplier::request(ItemType it, int qty) {
     // TODO
-    if (find(resourcesSupplied.begin(), resourcesSupplied.end(), it) == resourcesSupplied.end() || qty <= 0) {
+    if (qty <= 0 || find(resourcesSupplied.begin(), resourcesSupplied.end(), it) == resourcesSupplied.end()) {
         return 0;
     }
 
