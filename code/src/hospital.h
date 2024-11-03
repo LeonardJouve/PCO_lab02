@@ -101,7 +101,7 @@ private:
 
     int nbFree; // Nombre de personnes qui sont sorties soignées de l'hôpital.
 
-    std::map<int, int> patientsRecovering;
+    std::array<int, 5> patientsRecovering = {0,0,0,0,0};
 
     static IWindowInterface* interface;  // Pointeur statique vers l'interface utilisateur pour les logs et mises à jour visuelles
 };

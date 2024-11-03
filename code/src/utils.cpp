@@ -2,7 +2,6 @@
 #include <iostream>
 
 void Utils::endService() {
-    // TODO
     for (auto& thread : threads) {
         thread->requestStop();
     }

@@ -18,7 +18,6 @@ Supplier::Supplier(int uniqueId, int fund, std::vector<ItemType> resourcesSuppli
 
 
 int Supplier::request(ItemType it, int qty) {
-    // TODO
     if (qty <= 0 || find(resourcesSupplied.begin(), resourcesSupplied.end(), it) == resourcesSupplied.end()) {
         return 0;
     }
@@ -35,16 +34,14 @@ void Supplier::run() {
     while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
         ItemType resourceSupplied = getRandomItemFromStock();
         int supplierCost = getEmployeeSalary(getEmployeeThatProduces(resourceSupplied));
-        // TODO 
-        if (money < supplierCost) continue;
 
-        // TODO decrement funds
-        money -= supplierCost;
+        if (money < supplierCost + getCostPerUnit(resourceSupplied)) continue;
+
+        money -= supplierCost + getCostPerUnit(resourceSupplied);
         ++stocks[resourceSupplied];
 
         /* Temps aléatoire borné qui simule l'attente du travail fini*/
         interface->simulateWork();
-        //TODO
 
         ++nbSupplied;
 

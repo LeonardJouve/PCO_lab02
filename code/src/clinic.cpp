@@ -26,54 +26,56 @@ bool Clinic::verifyResources() {
 }
 
 int Clinic::request(ItemType what, int qty){
-    // TODO 
-    if(what != ItemType::PatientHealed) return 0;
+    if(what != ItemType::PatientHealed || qty <= 0) return 0;
 
-    int patients = std::max(qty, stocks[ItemType::PatientHealed]);
+    int patients = std::min(qty, stocks[ItemType::PatientHealed]);
 
     stocks[ItemType::PatientHealed] -= patients;
+    money += getCostPerUnit(ItemType::PatientHealed) * patients;
 
     return patients;
 }
 
 void Clinic::treatPatient() {
-    // TODO 
     if(stocks[ItemType::PatientSick] <= 0) return;
 
-    //Temps simulant un traitement 
-    interface->simulateWork();
-
-    // TODO
     for(const auto& item : resourcesNeeded){
         if(stocks[item] <= 0){
-            std::cout << "Error " << stocks[item] << std::endl;
+            std::cerr << "Error " << stocks[item] << std::endl;
+            return;
         }
         --stocks[item];
     }
 
     ++nbTreated;
     --stocks[ItemType::PatientSick];
+    ++stocks[ItemType::PatientHealed];
 
     money -= getEmployeeSalary(EmployeeType::Doctor);
-    
+
+    //Temps simulant un traitement 
+    interface->simulateWork();
     interface->consoleAppendText(uniqueId, "Clinic have healed a new patient");
 }
 
 void Clinic::orderResources() {
-    // TODO 
+    //Acquire any necessary item
     for(const auto& item : resourcesNeeded){
-        if(stocks[item] == 0){
-            for(const auto sup : suppliers){
-                int amount = sup->request(item, 1);
-                if (amount != 1){
-                    continue;
-                }
-                ++stocks[item];
-                money -= getCostPerUnit(item);
-                break;
+        if(stocks[item] > 0) continue;
+        for(const auto sup : suppliers){
+            int amount = sup->request(item, 1);
 
-            }
+            stocks[item] += amount;
+            money -= getCostPerUnit(item) * amount;
         }
+    }
+
+    //Acquire patients from hospitals
+    for(const auto hospital : hospitals){
+        int amount = hospital->request(ItemType::PatientSick, 1);
+
+        stocks[ItemType::PatientSick] += amount;
+        money -= getTreatmentCost() * amount;
     }
 }
 
@@ -84,7 +86,7 @@ void Clinic::run() {
     }
     interface->consoleAppendText(uniqueId, "[START] Clinic routine");
 
-    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
+    while (!PcoThread::thisThread()->stopRequested()) {
         
         if (verifyResources()) {
             treatPatient();

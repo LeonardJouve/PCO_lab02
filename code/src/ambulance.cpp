@@ -21,7 +21,6 @@ Ambulance::Ambulance(int uniqueId, int fund, std::vector<ItemType> resourcesSupp
 }
 
 void Ambulance::sendPatient(){
-    // TODO
     for (auto& hospital : hospitals) {
         int amount = hospital->send(ItemType::PatientSick, getNumberPatients(), getCostPerUnit(ItemType::PatientSick));
 
@@ -38,7 +37,7 @@ void Ambulance::sendPatient(){
 void Ambulance::run() {
     interface->consoleAppendText(uniqueId, "[START] Ambulance routine");
 
-    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
+    while (!PcoThread::thisThread()->stopRequested()) {
     
         sendPatient();
         

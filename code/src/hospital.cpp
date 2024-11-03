@@ -16,10 +16,6 @@ Hospital::Hospital(int uniqueId, int fund, int maxBeds)
     for(const auto& item : initialStocks) {
         stocks[item] = 0;
     }
-
-    for(int i = 0; i < 5; ++i) {
-        patientsRecovering.emplace(i, 0);
-    }
 }
 
 int Hospital::request(ItemType what, int qty){
@@ -36,17 +32,20 @@ int Hospital::request(ItemType what, int qty){
 void Hospital::freeHealedPatient() {
     int patientsToFree = patientsRecovering[0];//these patients did their 5 days of resting
     //each patient need to stay one less day
-    for(int i = 0; i < 4; ++i){
+    for(int i = 0; i < patientsRecovering.size() - 1; ++i){
         patientsRecovering[i] = patientsRecovering[i + 1];
     }
     patientsRecovering[4] = 0;
-    stocks[ItemType::PatientHealed] -= patientsToFree;
+    //stocks[ItemType::PatientHealed] -= patientsToFree;
     nbFree += patientsToFree;
+    currentBeds -= patientsToFree;
 }
 
 void Hospital::transferPatientsFromClinic() {
-    for(Seller *c : this->clinics){
-        int healedPatients = c->request(ItemType::PatientHealed, maxBeds - currentBeds);
+    for(const auto clinic : this->clinics){
+        if(maxBeds == currentBeds) return;
+        int healedPatients = clinic->request(ItemType::PatientHealed, 1);
+
         currentBeds += healedPatients;
         patientsRecovering[4] += healedPatients;//newly healed patients who need to stay 5 days
         stocks[ItemType::PatientHealed] += healedPatients;
@@ -56,13 +55,14 @@ void Hospital::transferPatientsFromClinic() {
 }
 
 int Hospital::send(ItemType it, int qty, int bill) {
-    // TODO
-    if (it != ItemType::PatientSick || qty <= 0) return 0;
+    if (it != ItemType::PatientSick || qty <= 0 || maxBeds == currentBeds) return 0;
 
-    int amount = std::min(std::max(maxBeds - currentBeds, qty), money / bill);
+    int amount = std::min(std::min(maxBeds - currentBeds, qty), money / bill);
+
     money -= bill * amount;
     currentBeds += amount;
     stocks[ItemType::PatientSick] += amount;
+    nbHospitalised += amount;
     return amount;
 }
 
@@ -75,9 +75,9 @@ void Hospital::run()
 
     interface->consoleAppendText(uniqueId, "[START] Hospital routine");
 
-    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
-        transferPatientsFromClinic();
+    while (!PcoThread::thisThread()->stopRequested()) {
 
+        transferPatientsFromClinic();
         freeHealedPatient();
 
         interface->updateFund(uniqueId, money);
