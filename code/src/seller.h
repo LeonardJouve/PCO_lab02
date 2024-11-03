@@ -91,7 +91,7 @@ protected:
     std::map<ItemType, int> stocks;
     int money;
     int uniqueId;
-    PcoMutex m_stocks{};//mutex to protect access to stocks
+    PcoMutex mut{};//mutex to protect access to stocks
 };
 
 #endif // SELLER_H

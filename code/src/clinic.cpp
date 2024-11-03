@@ -28,11 +28,11 @@ bool Clinic::verifyResources() {
 int Clinic::request(ItemType what, int qty){
     if(what != ItemType::PatientHealed || qty <= 0) return 0;
 
-    m_stocks.lock();
+    mut.lock();
     int patients = std::min(qty, stocks[ItemType::PatientHealed]);
     stocks[ItemType::PatientHealed] -= patients;
     money += getCostPerUnit(ItemType::PatientHealed) * patients;
-    m_stocks.unlock();
+    mut.unlock();
 
     return patients;
 }
@@ -41,20 +41,15 @@ void Clinic::treatPatient() {
     if(stocks[ItemType::PatientSick] <= 0) return;
 
     ++nbTreated;
-    m_stocks.lock();
+    mut.lock();
     for(const auto& item : resourcesNeeded){
-        if(stocks[item] <= 0){
-            std::cerr << "Error " << stocks[item] << std::endl;
-            m_stocks.unlock();
-            return;
-        }
         --stocks[item];
     }
 
-    --stocks[ItemType::PatientSick];
     ++stocks[ItemType::PatientHealed];
     money -= getEmployeeSalary(EmployeeType::Doctor);
-    m_stocks.unlock();
+    mut.unlock();
+
     //Temps simulant un traitement 
     interface->simulateWork();
     interface->consoleAppendText(uniqueId, "Clinic have healed a new patient");
@@ -63,34 +58,33 @@ void Clinic::treatPatient() {
 void Clinic::orderResources() {
     //Acquire any necessary item
     for(const auto& item : resourcesNeeded){
-        m_stocks.lock();
+        mut.lock();
         if(stocks[item] > 0){
-             m_stocks.unlock();
+             mut.unlock();
              continue;
         }
         if(money < getCostPerUnit(item)){
-            m_stocks.unlock();
+            mut.unlock();
             return;
         }
-        for(const auto sup : suppliers){
-            int amount = sup->request(item, 1);
+        std::vector<Seller*> stores;
+
+        if(item == ItemType::PatientSick){
+            stores = hospitals;
+        }else{
+            stores = suppliers;
+        }
+        for(const auto store : stores){
+            int amount = store->request(item, 1);
             stocks[item] += amount;
             money -= getCostPerUnit(item) * amount;
+            if(amount > 0) break;
         }
-        m_stocks.unlock();
+        mut.unlock();
+
     }
 
-    for(const auto hospital : hospitals){
-        m_stocks.lock();
-        if(stocks[ItemType::PatientSick] > 0 || money < getCostPerUnit(ItemType::PatientSick)){
-            m_stocks.unlock();
-            return;
-        }
-        int amount = hospital->request(ItemType::PatientSick, 1);
-        stocks[ItemType::PatientSick] += amount;
-        money -= getCostPerUnit(ItemType::PatientSick) * amount;
-        m_stocks.unlock();
-    }
+
 }
 
 void Clinic::run() {

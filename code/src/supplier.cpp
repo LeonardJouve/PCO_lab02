@@ -22,11 +22,11 @@ int Supplier::request(ItemType it, int qty) {
         return 0;
     }
 
-    m_stocks.lock();
+    mut.lock();
     int amount = std::min(stocks[it], qty);
     stocks[it] -= amount;
     money += amount * getCostPerUnit(it);
-    m_stocks.unlock();
+    mut.unlock();
     return amount;
 }
 
@@ -37,15 +37,15 @@ void Supplier::run() {
         ItemType resourceSupplied = getRandomItemFromStock();
         int supplierCost = getEmployeeSalary(getEmployeeThatProduces(resourceSupplied));
 
-        m_stocks.lock();
+        mut.lock();
         if (money < supplierCost + getCostPerUnit(resourceSupplied)){
-            m_stocks.unlock();
+            mut.unlock();
             continue;
         }
 
         money -= supplierCost + getCostPerUnit(resourceSupplied);
         ++stocks[resourceSupplied];
-        m_stocks.unlock();
+        mut.unlock();
 
         /* Temps aléatoire borné qui simule l'attente du travail fini*/
         interface->simulateWork();
