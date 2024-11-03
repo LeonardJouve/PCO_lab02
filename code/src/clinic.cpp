@@ -40,20 +40,21 @@ int Clinic::request(ItemType what, int qty){
 void Clinic::treatPatient() {
     if(stocks[ItemType::PatientSick] <= 0) return;
 
+    ++nbTreated;
+    m_stocks.lock();
     for(const auto& item : resourcesNeeded){
         if(stocks[item] <= 0){
             std::cerr << "Error " << stocks[item] << std::endl;
+            m_stocks.unlock();
             return;
         }
         --stocks[item];
     }
-    ++nbTreated;
-    m_stocks.lock();
+
     --stocks[ItemType::PatientSick];
     ++stocks[ItemType::PatientHealed];
-    m_stocks.unlock();
     money -= getEmployeeSalary(EmployeeType::Doctor);
-
+    m_stocks.unlock();
     //Temps simulant un traitement 
     interface->simulateWork();
     interface->consoleAppendText(uniqueId, "Clinic have healed a new patient");
@@ -62,25 +63,33 @@ void Clinic::treatPatient() {
 void Clinic::orderResources() {
     //Acquire any necessary item
     for(const auto& item : resourcesNeeded){
-        if(stocks[item] > 0) continue;
-        if(money < getCostPerUnit(item)) return;
+        m_stocks.lock();
+        if(stocks[item] > 0){
+             m_stocks.unlock();
+             continue;
+        }
+        if(money < getCostPerUnit(item)){
+            m_stocks.unlock();
+            return;
+        }
         for(const auto sup : suppliers){
             int amount = sup->request(item, 1);
-
             stocks[item] += amount;
             money -= getCostPerUnit(item) * amount;
         }
+        m_stocks.unlock();
     }
 
-    //Acquire patients from hospitals
     for(const auto hospital : hospitals){
-        if(money < getCostPerUnit(ItemType::PatientSick)) return;
-
-        int amount = hospital->request(ItemType::PatientSick, 1);
         m_stocks.lock();
+        if(stocks[ItemType::PatientSick] > 0 || money < getCostPerUnit(ItemType::PatientSick)){
+            m_stocks.unlock();
+            return;
+        }
+        int amount = hospital->request(ItemType::PatientSick, 1);
         stocks[ItemType::PatientSick] += amount;
-        m_stocks.unlock();
         money -= getCostPerUnit(ItemType::PatientSick) * amount;
+        m_stocks.unlock();
     }
 }
 

@@ -32,12 +32,17 @@ int Supplier::request(ItemType it, int qty) {
 
 void Supplier::run() {
     interface->consoleAppendText(uniqueId, "[START] Supplier routine");
-    while (!PcoThread::thisThread()->stopRequested() /*TODO*/) {
+
+    while (!PcoThread::thisThread()->stopRequested()) {
         ItemType resourceSupplied = getRandomItemFromStock();
         int supplierCost = getEmployeeSalary(getEmployeeThatProduces(resourceSupplied));
 
-        if (money < supplierCost + getCostPerUnit(resourceSupplied)) continue;
         m_stocks.lock();
+        if (money < supplierCost + getCostPerUnit(resourceSupplied)){
+            m_stocks.unlock();
+            continue;
+        }
+
         money -= supplierCost + getCostPerUnit(resourceSupplied);
         ++stocks[resourceSupplied];
         m_stocks.unlock();
