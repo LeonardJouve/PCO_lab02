@@ -28,10 +28,11 @@ bool Clinic::verifyResources() {
 int Clinic::request(ItemType what, int qty){
     if(what != ItemType::PatientHealed || qty <= 0) return 0;
 
+    m_stocks.lock();
     int patients = std::min(qty, stocks[ItemType::PatientHealed]);
-
     stocks[ItemType::PatientHealed] -= patients;
     money += getCostPerUnit(ItemType::PatientHealed) * patients;
+    m_stocks.unlock();
 
     return patients;
 }
@@ -46,11 +47,11 @@ void Clinic::treatPatient() {
         }
         --stocks[item];
     }
-
     ++nbTreated;
+    m_stocks.lock();
     --stocks[ItemType::PatientSick];
     ++stocks[ItemType::PatientHealed];
-
+    m_stocks.unlock();
     money -= getEmployeeSalary(EmployeeType::Doctor);
 
     //Temps simulant un traitement 
@@ -62,6 +63,7 @@ void Clinic::orderResources() {
     //Acquire any necessary item
     for(const auto& item : resourcesNeeded){
         if(stocks[item] > 0) continue;
+        if(money < getCostPerUnit(item)) return;
         for(const auto sup : suppliers){
             int amount = sup->request(item, 1);
 
@@ -72,10 +74,13 @@ void Clinic::orderResources() {
 
     //Acquire patients from hospitals
     for(const auto hospital : hospitals){
-        int amount = hospital->request(ItemType::PatientSick, 1);
+        if(money < getCostPerUnit(ItemType::PatientSick)) return;
 
+        int amount = hospital->request(ItemType::PatientSick, 1);
+        m_stocks.lock();
         stocks[ItemType::PatientSick] += amount;
-        money -= getTreatmentCost() * amount;
+        m_stocks.unlock();
+        money -= getCostPerUnit(ItemType::PatientSick) * amount;
     }
 }
 

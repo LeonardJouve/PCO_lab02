@@ -21,11 +21,12 @@ Hospital::Hospital(int uniqueId, int fund, int maxBeds)
 int Hospital::request(ItemType what, int qty){
     if (what != ItemType::PatientSick || qty <= 0) return 0;
 
+    m_stocks.lock();
     int amount = std::min(stocks[ItemType::PatientSick], qty);
     money += getCostPerUnit(ItemType::PatientSick) * amount;
     currentBeds -= amount;
     stocks[ItemType::PatientSick] -= amount;
-
+    m_stocks.unlock();
     return amount;
 }
 
@@ -48,7 +49,9 @@ void Hospital::transferPatientsFromClinic() {
 
         currentBeds += healedPatients;
         patientsRecovering[4] += healedPatients;//newly healed patients who need to stay 5 days
+        m_stocks.lock();
         stocks[ItemType::PatientHealed] += healedPatients;
+        m_stocks.unlock();
         money -= getEmployeeSalary(EmployeeType::Nurse) * healedPatients;
         nbHospitalised += healedPatients;
     }
@@ -56,12 +59,13 @@ void Hospital::transferPatientsFromClinic() {
 
 int Hospital::send(ItemType it, int qty, int bill) {
     if (it != ItemType::PatientSick || qty <= 0 || maxBeds == currentBeds) return 0;
-
+    m_stocks.lock();
     int amount = std::min(std::min(maxBeds - currentBeds, qty), money / bill);
 
     money -= bill * amount;
     currentBeds += amount;
     stocks[ItemType::PatientSick] += amount;
+    m_stocks.unlock();
     nbHospitalised += amount;
     return amount;
 }
