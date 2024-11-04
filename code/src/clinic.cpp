@@ -38,10 +38,11 @@ int Clinic::request(ItemType what, int qty){
 }
 
 void Clinic::treatPatient() {
-    if(stocks[ItemType::PatientSick] <= 0) return;
-
-    ++nbTreated;
     mut.lock();
+    if(stocks[ItemType::PatientSick] <= 0 || money < getEmployeeSalary(EmployeeType::Doctor)) {
+        mut.unlock();
+        return;
+    }
     for(const auto& item : resourcesNeeded){
         --stocks[item];
     }
@@ -49,6 +50,7 @@ void Clinic::treatPatient() {
     ++stocks[ItemType::PatientHealed];
     money -= getEmployeeSalary(EmployeeType::Doctor);
     mut.unlock();
+    ++nbTreated;
 
     //Temps simulant un traitement 
     interface->simulateWork();
@@ -60,31 +62,18 @@ void Clinic::orderResources() {
     for(const auto& item : resourcesNeeded){
         mut.lock();
         if(stocks[item] > 0){
-             mut.unlock();
-             continue;
-        }
-        if(money < getCostPerUnit(item)){
             mut.unlock();
-            return;
+            continue;
         }
-        std::vector<Seller*> stores;
-
-        if(item == ItemType::PatientSick){
-            stores = hospitals;
-        }else{
-            stores = suppliers;
-        }
-        for(const auto store : stores){
+        for(const auto store : (item == ItemType::PatientSick ? hospitals : suppliers)){
+            if(money < getCostPerUnit(item)) break;
             int amount = store->request(item, 1);
             stocks[item] += amount;
             money -= getCostPerUnit(item) * amount;
             if(amount > 0) break;
         }
         mut.unlock();
-
     }
-
-
 }
 
 void Clinic::run() {
