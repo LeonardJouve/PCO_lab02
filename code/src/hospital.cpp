@@ -45,9 +45,9 @@ void Hospital::freeHealedPatient() {
 }
 
 void Hospital::transferPatientsFromClinic() {
+    mut.lock();
     for(const auto clinic : this->clinics){
-        mut.lock();
-        if(maxBeds == currentBeds || money < getEmployeeSalary(EmployeeType::Nurse)) {
+        if(maxBeds == currentBeds || money < getEmployeeSalary(EmployeeType::Nurse) + getCostPerUnit(ItemType::PatientHealed)) {
             mut.unlock();
             return;
         }
@@ -57,23 +57,27 @@ void Hospital::transferPatientsFromClinic() {
         patientsRecovering[4] += healedPatients;//newly healed patients who need to stay 5 days
 
         stocks[ItemType::PatientHealed] += healedPatients;
-        mut.unlock();
+
         money -= getEmployeeSalary(EmployeeType::Nurse) * healedPatients;
         money -= getCostPerUnit(ItemType::PatientHealed);
         nbHospitalised += healedPatients;
+
     }
+    mut.unlock();
 }
 
 int Hospital::send(ItemType it, int qty, int bill) {
     if (it != ItemType::PatientSick || qty <= 0) return 0;
     mut.lock();
+
     int amount = std::min(std::min(maxBeds - currentBeds, qty), money / bill);
 
     money -= bill * amount;
     currentBeds += amount;
     stocks[ItemType::PatientSick] += amount;
-    mut.unlock();
     nbHospitalised += amount;
+
+    mut.unlock();
     return amount;
 }
 

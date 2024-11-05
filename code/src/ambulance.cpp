@@ -27,7 +27,7 @@ void Ambulance::sendPatient(){
         if (amount > 0) {
             nbTransfer += amount;
             stocks[ItemType::PatientSick] -= amount;
-            money += getCostPerUnit(ItemType::PatientSick) * amount;
+            money += std::abs(getCostPerUnit(ItemType::PatientSick) - getEmployeeSalary(EmployeeType::Supplier)) * amount;
             break;
         }
 
