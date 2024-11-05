@@ -49,8 +49,8 @@ void Clinic::treatPatient() {
 
     ++stocks[ItemType::PatientHealed];
     money -= getEmployeeSalary(EmployeeType::Doctor);
-    mut.unlock();
     ++nbTreated;
+    mut.unlock();
 
     //Temps simulant un traitement 
     interface->simulateWork();
@@ -59,21 +59,21 @@ void Clinic::treatPatient() {
 
 void Clinic::orderResources() {
     //Acquire any necessary item
+    mut.lock();
+    
     for(const auto& item : resourcesNeeded){
-        mut.lock();
-        if(stocks[item] > 0){
-            mut.unlock();
-            continue;
-        }
+        if(stocks[item] > 0 || money < getCostPerUnit(item)) continue;
+
         for(const auto store : (item == ItemType::PatientSick ? hospitals : suppliers)){
-            if(money < getCostPerUnit(item)) break;
             int amount = store->request(item, 1);
             stocks[item] += amount;
             money -= getCostPerUnit(item) * amount;
+
             if(amount > 0) break;
         }
-        mut.unlock();
     }
+
+    mut.unlock();
 }
 
 void Clinic::run() {

@@ -21,13 +21,14 @@ Ambulance::Ambulance(int uniqueId, int fund, std::vector<ItemType> resourcesSupp
 }
 
 void Ambulance::sendPatient(){
-    for (auto& hospital : hospitals) {
-        int amount = hospital->send(ItemType::PatientSick, getNumberPatients(), getCostPerUnit(ItemType::PatientSick));
+    for (const auto& hospital : hospitals) {
+        int amount = hospital->send(ItemType::PatientSick, stocks[ItemType::PatientSick], getCostPerUnit(ItemType::PatientSick));
 
         if (amount > 0) {
-            nbTransfer += amount;
             stocks[ItemType::PatientSick] -= amount;
-            money += std::abs(getCostPerUnit(ItemType::PatientSick) - getEmployeeSalary(EmployeeType::Supplier)) * amount;
+            money += getCostPerUnit(ItemType::PatientSick) * amount;
+            money -= getEmployeeSalary(EmployeeType::Supplier) * amount;
+            nbTransfer += amount;
             break;
         }
 
