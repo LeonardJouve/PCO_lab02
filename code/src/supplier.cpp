@@ -38,19 +38,19 @@ void Supplier::run() {
         int supplierCost = getEmployeeSalary(getEmployeeThatProduces(resourceSupplied));
 
         mut.lock();
-        if (money < supplierCost + getCostPerUnit(resourceSupplied)){
+        if (money < supplierCost){
             mut.unlock();
             continue;
         }
 
-        money -= supplierCost + getCostPerUnit(resourceSupplied);
         ++stocks[resourceSupplied];
+        money -= supplierCost;
+        ++nbSupplied;
+
         mut.unlock();
 
         /* Temps aléatoire borné qui simule l'attente du travail fini*/
         interface->simulateWork();
-
-        ++nbSupplied;
 
         interface->updateFund(uniqueId, money);
         interface->updateStock(uniqueId, &stocks);

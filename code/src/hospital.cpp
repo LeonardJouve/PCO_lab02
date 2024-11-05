@@ -31,49 +31,57 @@ int Hospital::request(ItemType what, int qty){
 }
 
 void Hospital::freeHealedPatient() {
+    mut.lock();
     int patientsToFree = patientsRecovering[0];//these patients did their 5 days of resting
     //each patient need to stay one less day
     for(int i = 0; i < patientsRecovering.size() - 1; ++i){
         patientsRecovering[i] = patientsRecovering[i + 1];
     }
-    patientsRecovering[4] = 0;
-    mut.lock();
+    patientsRecovering[patientsRecovering.size() - 1] = 0;
     stocks[ItemType::PatientHealed] -= patientsToFree;
-    nbFree += patientsToFree;
     currentBeds -= patientsToFree;
+    nbFree += patientsToFree;
     mut.unlock();
 }
 
 void Hospital::transferPatientsFromClinic() {
-    for(const auto clinic : this->clinics){
-        mut.lock();
-        if(maxBeds == currentBeds || money < getEmployeeSalary(EmployeeType::Nurse)) {
-            mut.unlock();
-            return;
-        }
-        int healedPatients = clinic->request(ItemType::PatientHealed, 1);
-
-        currentBeds += healedPatients;
-        patientsRecovering[4] += healedPatients;//newly healed patients who need to stay 5 days
-
-        stocks[ItemType::PatientHealed] += healedPatients;
+    mut.lock();
+    int costPerUnit = getEmployeeSalary(EmployeeType::Nurse) + getCostPerUnit(ItemType::PatientHealed);
+    int amountAffordable = money / costPerUnit;
+    int requestAmount = std::min(maxBeds - currentBeds, amountAffordable);
+    if (requestAmount <= 0) {
         mut.unlock();
-        money -= getEmployeeSalary(EmployeeType::Nurse) * healedPatients;
-        money -= getCostPerUnit(ItemType::PatientHealed);
-        nbHospitalised += healedPatients;
+        return;
     }
+    
+    for(const auto clinic : this->clinics){
+        int healedPatients = clinic->request(ItemType::PatientHealed, requestAmount);
+
+        if (healedPatients > 0) {
+            currentBeds += healedPatients;
+            patientsRecovering[patientsRecovering.size() - 1] += healedPatients;//newly healed patients who need to stay 5 days
+
+            stocks[ItemType::PatientHealed] += healedPatients;
+            money -= costPerUnit * healedPatients;
+            nbHospitalised += healedPatients;
+            break;
+        }
+    }
+    mut.unlock();
 }
 
 int Hospital::send(ItemType it, int qty, int bill) {
     if (it != ItemType::PatientSick || qty <= 0) return 0;
+    
     mut.lock();
-    int amount = std::min(std::min(maxBeds - currentBeds, qty), money / bill);
+    int costPerUnit = getEmployeeSalary(EmployeeType::Nurse) + bill;
+    int amount = std::min(std::min(maxBeds - currentBeds, qty), money / costPerUnit);
 
-    money -= bill * amount;
     currentBeds += amount;
     stocks[ItemType::PatientSick] += amount;
-    mut.unlock();
+    money -= costPerUnit * amount;
     nbHospitalised += amount;
+    mut.unlock();
     return amount;
 }
 
